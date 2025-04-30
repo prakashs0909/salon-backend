@@ -97,35 +97,35 @@ router.post(
         },
       };
 
-      if(user.verified === false){
-      const authToken = jwt.sign(data, jwt_secret);
+      if (user.verified === false) {
+        const authToken = jwt.sign(data, jwt_secret);
 
-      const verificationLink = `${req.protocol}://${req.get(
-        "host"
-      )}/api/auth/verify/${authToken}`;
+        const verificationLink = `${req.protocol}://${req.get(
+          "host"
+        )}/api/auth/verify/${authToken}`;
 
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: req.body.email,
-        subject: "Email Verification",
-        html: `<p>Hello ${user.name},</p>
+        const mailOptions = {
+          from: process.env.EMAIL,
+          to: req.body.email,
+          subject: "Email Verification",
+          html: `<p>Hello ${user.name},</p>
                 <p>Please verify your email by clicking the link below:</p>
                 <a href="${verificationLink}">Verify Email</a>
                 <p>If you do not verify the account, you will not be able to log in.</p>`,
-      };
+        };
 
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error("Error sending email:", error);
-          return res
-            .status(500)
-            .json({ error: "Failed to send verification email" });
-        }
-        // console.log("Verification email sent:", info.response);
-      });
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email:", error);
+            return res
+              .status(500)
+              .json({ error: "Failed to send verification email" });
+          }
+          // console.log("Verification email sent:", info.response);
+        });
 
-      success = true;
-      res.json({ success, authToken });
+        success = true;
+        res.json({ success, authToken, verificationLink });
       }
     } catch (error) {
       console.log(error.message);

@@ -6,8 +6,17 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const fetchuser = require("../middleware/fetchuser");
 require('dotenv').config()
+const nodemailer = require("nodemailer");
 
 const jwt_secret = process.env.SECRET_KEY;
+
+const transporter = nodemailer.createTransport({
+  service: "gmail", 
+  auth: {
+    user: process.env.EMAIL, 
+    pass: process.env.EMAIL_PASSWORD, 
+  },
+});
 
 // Create an admin using: POST "/api/auth/createadmin"
 router.post('/createadmin', async (req, res) => {
@@ -72,9 +81,10 @@ router.post(
         email: req.body.email,
         password: secPass,
         role: req.body.role,
+        verified: false,
       });
 
-      await user.save();  // Save the user to the database
+      await user.save();  
 
       const data = {
         user: {
@@ -84,6 +94,27 @@ router.post(
       };
 
       const authToken = jwt.sign(data, jwt_secret);
+
+
+      const verificationLink =`${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+
+      const mailOptions = {
+        from: process.env.EMAIL,
+        to: req.body.email,
+        subject: "Email Verification",
+        html: `<p>Hello ${user.name},</p>
+               <p>Please verify your email by clicking the link below:</p>
+               <a href="${verificationLink}">Verify Email</a>`,   
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          return res.status(500).json({ error: "Failed to send verification email" });
+        }
+        // console.log("Verification email sent:", info.response);
+      });
+      
       success = true;
       res.json({ success, authToken });
     } catch (error) {
@@ -92,6 +123,27 @@ router.post(
     }
   }
 );
+
+// Verify email using: GET "/api/auth/verify/:token"
+router.get("/verify/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const decoded = jwt.verify(token, jwt_secret);
+    const userId = decoded.user.id;
+    
+    // Update the user's verification status
+    const user = await User.findByIdAndUpdate(userId, { verified: true }, { new: true });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ success: true, message: "Email verified successfully" });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    res.status(400).json({ error: "Invalid or expired token" });
+  }
+});
 
 // Authenticate a user using: POST "/api/auth/login"
 router.post(
@@ -118,6 +170,42 @@ router.post(
       const passwordCompare = await bcrypt.compare(password, user.password);
       if (!passwordCompare) {
         return res.status(400).json({ error: "Please try to log in with correct credentials" });
+      }
+
+      if (!user.verified) {
+        // Generate a new verification token
+        const data = {
+          user: {
+            id: user._id,
+            role: user.role,
+          },
+        };
+        const authToken = jwt.sign(data, jwt_secret, { expiresIn: "1h" });
+
+        // Create the verification link
+        const verificationLink = `${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+
+        // Send the verification email
+        const mailOptions = {
+          from: process.env.EMAIL,
+          to: user.email,
+          subject: "Resend Email Verification",
+          html: `<p>Hello ${user.name},</p>
+                 <p>Please verify your email by clicking the link below:</p>
+                 <a href="${verificationLink}">Verify Email</a>`,
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email:", error);
+            return res.status(500).json({ error: "Failed to resend verification email" });
+          }
+          // console.log("Verification email sent:", info.response);
+        });
+
+        return res.status(400).json({
+          error: "Please verify your email before logging in. A new verification link has been sent to your email.",
+        });
       }
 
       const data = {

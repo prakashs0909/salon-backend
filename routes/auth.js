@@ -5,30 +5,30 @@ const { body, validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const fetchuser = require("../middleware/fetchuser");
-require('dotenv').config()
+require("dotenv").config();
 const nodemailer = require("nodemailer");
 
 const jwt_secret = process.env.SECRET_KEY;
 
 const transporter = nodemailer.createTransport({
-  service: "gmail", 
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL , 
-    pass: process.env.EMAIL_PASSWORD , 
+    user: process.env.EMAIL,
+    pass: process.env.EMAIL_PASSWORD,
   },
 });
 
 // Create an admin using: POST "/api/auth/createadmin"
-router.post('/createadmin', async (req, res) => {
+router.post("/createadmin", async (req, res) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const secPass = await bcrypt.hash("12345", salt);
 
     const user = new User({
-      name: 'admin',
-      email: 'admin@gmail.com',
+      name: "admin",
+      email: "admin@gmail.com",
       password: secPass,
-      role: 'admin'
+      role: "admin",
     });
 
     // Save the user (admin) to the database
@@ -36,7 +36,7 @@ router.post('/createadmin', async (req, res) => {
 
     const data = {
       user: {
-        id: user._id,  // Ensure that the ID is retrieved after saving
+        id: user._id, // Ensure that the ID is retrieved after saving
         role: user.role,
       },
     };
@@ -57,7 +57,9 @@ router.post(
   [
     body("name", "Enter a valid name").isLength({ min: 3 }),
     body("email", "Enter a valid email").isEmail(),
-    body("password", "Password must be at least five characters").isLength({ min: 5 }),
+    body("password", "Password must be at least five characters").isLength({
+      min: 5,
+    }),
   ],
   async (req, res) => {
     let success = false;
@@ -69,7 +71,9 @@ router.post(
       // Check whether the user already exists
       let user = await User.findOne({ email: req.body.email });
       if (user) {
-        return res.status(400).json({ error: "Sorry, a user with this email already exists" });
+        return res
+          .status(400)
+          .json({ error: "Sorry, a user with this email already exists" });
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -84,39 +88,45 @@ router.post(
         verified: false,
       });
 
-      await user.save();  
+      await user.save();
 
       const data = {
         user: {
-          id: user._id, 
+          id: user._id,
           role: user.role,
         },
       };
 
-        const authToken = jwt.sign(data, jwt_secret);
+      if(user.verified === false){
+      const authToken = jwt.sign(data, jwt_secret);
 
-        const verificationLink =`${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+      const verificationLink = `${req.protocol}://${req.get(
+        "host"
+      )}/api/auth/verify/${authToken}`;
 
-        const mailOptions = {
-          from: process.env.EMAIL,
-          to: req.body.email,
-          subject: "Email Verification",
-          html: `<p>Hello ${user.name},</p>
+      const mailOptions = {
+        from: process.env.EMAIL,
+        to: req.body.email,
+        subject: "Email Verification",
+        html: `<p>Hello ${user.name},</p>
                 <p>Please verify your email by clicking the link below:</p>
                 <a href="${verificationLink}">Verify Email</a>
-                <p>If you do not verify the account, you will not be able to log in.</p>`,   
-        };
+                <p>If you do not verify the account, you will not be able to log in.</p>`,
+      };
 
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error("Error sending email:", error);
-            return res.status(500).json({ error: "Failed to send verification email" });
-          }
-          // console.log("Verification email sent:", info.response);
-        });
-      
-        success = true;
-        res.json({ success, authToken });
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Error sending email:", error);
+          return res
+            .status(500)
+            .json({ error: "Failed to send verification email" });
+        }
+        // console.log("Verification email sent:", info.response);
+      });
+
+      success = true;
+      res.json({ success, authToken });
+      }
     } catch (error) {
       console.log(error.message);
       res.status(500).send("Some error occurred");
@@ -131,9 +141,13 @@ router.get("/verify/:token", async (req, res) => {
 
     const decoded = jwt.verify(token, jwt_secret);
     const userId = decoded.user.id;
-    
+
     // Update the user's verification status
-    const user = await User.findByIdAndUpdate(userId, { verified: true }, { new: true });
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { verified: true },
+      { new: true }
+    );
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -174,15 +188,15 @@ router.post(
 
       if (!user.verified) {
         return res.status(400).json({
-          error: "Please verify your email before logging in. A new verification link has been sent to your email.",
-          resendVerification: true, 
-          
+          error:
+            "Please verify your email before logging in. A new verification link has been sent to your email.",
+          resendVerification: true,
         });
       }
 
       const data = {
         user: {
-          id: user._id,  
+          id: user._id,
           role: user.role,
         },
       };
@@ -218,7 +232,9 @@ router.post("/resend-verification", async (req, res) => {
     };
     const authToken = jwt.sign(data, jwt_secret);
 
-    const verificationLink = `${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+    const verificationLink = `${req.protocol}://${req.get(
+      "host"
+    )}/api/auth/verify/${authToken}`;
 
     const mailOptions = {
       from: process.env.EMAIL,
@@ -232,9 +248,13 @@ router.post("/resend-verification", async (req, res) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.error("Error sending email:", error);
-        return res.status(500).json({ error: "Failed to resend verification email" });
+        return res
+          .status(500)
+          .json({ error: "Failed to resend verification email" });
       }
-      res.status(200).json({ message: "Verification email resent successfully" });
+      res
+        .status(200)
+        .json({ message: "Verification email resent successfully" });
     });
   } catch (error) {
     console.error("Error resending verification email:", error);

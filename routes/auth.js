@@ -13,8 +13,8 @@ const jwt_secret = process.env.SECRET_KEY;
 const transporter = nodemailer.createTransport({
   service: "gmail", 
   auth: {
-    user: process.env.EMAIL, 
-    pass: process.env.EMAIL_PASSWORD, 
+    user: process.env.EMAIL , 
+    pass: process.env.EMAIL_PASSWORD , 
   },
 });
 
@@ -176,6 +176,7 @@ router.post(
         return res.status(400).json({
           error: "Please verify your email before logging in. A new verification link has been sent to your email",
           resendVerification: true, 
+          
         });
       }
 
@@ -198,6 +199,7 @@ router.post(
 
 router.post("/resend-verification", async (req, res) => {
   const { email } = req.body;
+  
 
   try {
     // Check if the user exists
@@ -226,7 +228,7 @@ router.post("/resend-verification", async (req, res) => {
     // Send the verification email
     const mailOptions = {
       from: process.env.EMAIL,
-      to: user.email,
+      to: req.body.email,
       subject: "Resend Email Verification",
       html: `<p>Hello ${user.name},</p>
              <p>Please verify your email by clicking the link below:</p>

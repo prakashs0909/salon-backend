@@ -125,7 +125,7 @@ router.post(
         });
 
         success = true;
-        res.json({ success, authToken, verificationLink });
+        res.json({ success, authToken });
       }
     } catch (error) {
       console.log(error.message);

@@ -164,53 +164,24 @@ router.post(
     try {
       let user = await User.findOne({ email });
       if (!user) {
-        return res.status(400).json({ error: "Please try to log in with correct credentials" });
+        return res.status(400).json({ error: "Invalid username and password" });
       }
 
       const passwordCompare = await bcrypt.compare(password, user.password);
       if (!passwordCompare) {
-        return res.status(400).json({ error: "Please try to log in with correct credentials" });
+        return res.status(400).json({ error: "Invalid username and password" });
       }
 
       if (!user.verified) {
-        // Generate a new verification token
-        const data = {
-          user: {
-            id: user._id,
-            role: user.role,
-          },
-        };
-        const authToken = jwt.sign(data, jwt_secret, { expiresIn: "1h" });
-
-        // Create the verification link
-        const verificationLink = `${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
-
-        // Send the verification email
-        const mailOptions = {
-          from: process.env.EMAIL,
-          to: user.email,
-          subject: "Resend Email Verification",
-          html: `<p>Hello ${user.name},</p>
-                 <p>Please verify your email by clicking the link below:</p>
-                 <a href="${verificationLink}">Verify Email</a>`,
-        };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error("Error sending email:", error);
-            return res.status(500).json({ error: "Failed to resend verification email" });
-          }
-          // console.log("Verification email sent:", info.response);
-        });
-
         return res.status(400).json({
-          error: "Please verify your email before logging in. A new verification link has been sent to your email.",
+          error: "Please verify your email before logging in. A new verification link has been sent to your email",
+          resendVerification: true, 
         });
       }
 
       const data = {
         user: {
-          id: user._id,  // Ensure that the ID is retrieved correctly
+          id: user._id,  
           role: user.role,
         },
       };
@@ -224,6 +195,57 @@ router.post(
     }
   }
 );
+
+router.post("/resend-verification", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Check if the user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if the user is already verified
+    if (user.verified) {
+      return res.status(400).json({ error: "User is already verified" });
+    }
+
+    // Generate a new verification token
+    const data = {
+      user: {
+        id: user._id,
+        role: user.role,
+      },
+    };
+    const authToken = jwt.sign(data, jwt_secret);
+
+    // Create the verification link
+    const verificationLink = `${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+
+    // Send the verification email
+    const mailOptions = {
+      from: process.env.EMAIL,
+      to: user.email,
+      subject: "Resend Email Verification",
+      html: `<p>Hello ${user.name},</p>
+             <p>Please verify your email by clicking the link below:</p>
+             <a href="${verificationLink}">Verify Email</a>`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email:", error);
+        return res.status(500).json({ error: "Failed to resend verification email" });
+      }
+      // console.log("Verification email sent:", info.response);
+      res.status(200).json({ message: "Verification email resent successfully" });
+    });
+  } catch (error) {
+    console.error("Error resending verification email:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Get user details using: POST "/api/auth/getuser"
 router.post("/getuser", fetchuser, async (req, res) => {

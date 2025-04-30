@@ -88,35 +88,39 @@ router.post(
 
       const data = {
         user: {
-          id: user._id,  // Ensure that the ID is retrieved after saving
+          id: user._id,  
           role: user.role,
         },
       };
 
-      const authToken = jwt.sign(data, jwt_secret);
-
-
-      const verificationLink =`${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
-
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: req.body.email,
-        subject: "Email Verification",
-        html: `<p>Hello ${user.name},</p>
-               <p>Please verify your email by clicking the link below:</p>
-               <a href="${verificationLink}">Verify Email</a>`,   
-      };
-
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error("Error sending email:", error);
-          return res.status(500).json({ error: "Failed to send verification email" });
-        }
-        // console.log("Verification email sent:", info.response);
-      });
       
-      success = true;
-      res.json({ success, authToken });
+      if (user.verified === false) {
+        const authToken = jwt.sign(data, jwt_secret);
+        const verificationLink =`${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
+
+        const mailOptions = {
+          from: process.env.EMAIL,
+          to: req.body.email,
+          subject: "Email Verification",
+          html: `<p>Hello ${user.name},</p>
+                <p>Please verify your email by clicking the link below:</p>
+                <a href="${verificationLink}">Verify Email</a>`,   
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email:", error);
+            return res.status(500).json({ error: "Failed to send verification email" });
+          }
+          // console.log("Verification email sent:", info.response);
+        });
+      
+        success = false;
+        // res.json({ success, authToken });
+      } else {
+        success = true;
+        
+      }
     } catch (error) {
       console.log(error.message);
       res.status(500).send("Some error occurred");
@@ -199,21 +203,17 @@ router.post(
 
 router.post("/resend-verification", async (req, res) => {
   const { email } = req.body;
-  
 
   try {
-    // Check if the user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Check if the user is already verified
     if (user.verified) {
       return res.status(400).json({ error: "User is already verified" });
     }
 
-    // Generate a new verification token
     const data = {
       user: {
         id: user._id,
@@ -222,10 +222,8 @@ router.post("/resend-verification", async (req, res) => {
     };
     const authToken = jwt.sign(data, jwt_secret);
 
-    // Create the verification link
     const verificationLink = `${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
 
-    // Send the verification email
     const mailOptions = {
       from: process.env.EMAIL,
       to: req.body.email,
@@ -235,12 +233,11 @@ router.post("/resend-verification", async (req, res) => {
              <a href="${verificationLink}">Verify Email</a>`,
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
+    transporter.sendMail(mailOptions, (error) => {
       if (error) {
         console.error("Error sending email:", error);
         return res.status(500).json({ error: "Failed to resend verification email" });
       }
-      // console.log("Verification email sent:", info.response);
       res.status(200).json({ message: "Verification email resent successfully" });
     });
   } catch (error) {

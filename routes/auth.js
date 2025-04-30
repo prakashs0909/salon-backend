@@ -88,14 +88,13 @@ router.post(
 
       const data = {
         user: {
-          id: user._id,  
+          id: user._id, 
           role: user.role,
         },
       };
 
-      
-      if (user.verified === false) {
         const authToken = jwt.sign(data, jwt_secret);
+
         const verificationLink =`${req.protocol}://${req.get("host")}/api/auth/verify/${authToken}`;
 
         const mailOptions = {
@@ -104,7 +103,8 @@ router.post(
           subject: "Email Verification",
           html: `<p>Hello ${user.name},</p>
                 <p>Please verify your email by clicking the link below:</p>
-                <a href="${verificationLink}">Verify Email</a>`,   
+                <a href="${verificationLink}">Verify Email</a>
+                <p>If you do not verify the account, you will not be able to log in.</p>`,   
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -115,12 +115,8 @@ router.post(
           // console.log("Verification email sent:", info.response);
         });
       
-        success = false;
-        // res.json({ success, authToken });
-      } else {
         success = true;
-        
-      }
+        res.json({ success, authToken });
     } catch (error) {
       console.log(error.message);
       res.status(500).send("Some error occurred");
@@ -178,7 +174,7 @@ router.post(
 
       if (!user.verified) {
         return res.status(400).json({
-          error: "Please verify your email before logging in. A new verification link has been sent to your email",
+          error: "Please verify your email before logging in. A new verification link has been sent to your email.",
           resendVerification: true, 
           
         });
@@ -233,7 +229,7 @@ router.post("/resend-verification", async (req, res) => {
              <a href="${verificationLink}">Verify Email</a>`,
     };
 
-    transporter.sendMail(mailOptions, (error) => {
+    transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
         console.error("Error sending email:", error);
         return res.status(500).json({ error: "Failed to resend verification email" });

@@ -165,7 +165,8 @@ router.get("/verify/:token", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ success: true, message: "Email verified successfully" });
+    // res.json({ success: true, message: "Email verified successfully" });
+    res.redirect(`${process.env.FRONTEND_URL}/Mailverified/${token}`);
   } catch (error) {
     console.error("Error verifying email:", error);
     res.status(400).json({ error: "Invalid or expired token" });

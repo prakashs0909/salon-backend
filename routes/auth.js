@@ -18,6 +18,20 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+async function sendEmailWithRetry(mailOptions, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt}: Sending email to ${mailOptions.to}`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log("Email sent successfully:", info.response);
+      return true;
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error.message);
+      if (attempt === retries) throw error;
+    }
+  }
+}
+
 // Create an admin using: POST "/api/auth/createadmin"
 router.post("/createadmin", async (req, res) => {
   try {
@@ -73,7 +87,7 @@ router.post(
       if (user) {
         return res
           .status(400)
-          .json({ error: "Sorry, a user with this email already exists" });
+          .json({ error: "User with this email already exists" });
       }
 
       const salt = await bcrypt.genSalt(10);
@@ -96,6 +110,7 @@ router.post(
           role: user.role,
         },
       };
+      console.log("veri" , user.verified);
 
       if (user.verified === false) {
         const authToken = jwt.sign(data, jwt_secret);
@@ -114,18 +129,16 @@ router.post(
                 <p>If you do not verify the account, you will not be able to log in.</p>`,
         };
 
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error("Error sending email:", error);
-            return res
-              .status(500)
-              .json({ error: "Failed to send verification email" });
-          }
-          // console.log("Verification email sent:", info.response);
-        });
-
-        success = true;
-        res.json({ success, authToken });
+        try {
+          await sendEmailWithRetry(mailOptions);
+          success = true;
+          res.json({ success, authToken });
+        } catch (error) {
+          console.error("Error sending email:", error);
+          res
+            .status(500)
+            .json({ error: "Failed to send verification email. Please try again later." });
+        }
       }
     } catch (error) {
       console.log(error.message);

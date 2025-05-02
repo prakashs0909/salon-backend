@@ -15,10 +15,12 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('Hello World!')
 })
+
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/appointment', require('./routes/appointment'))
 app.use('/api/services', require('./routes/services'))
 app.use('/api/salonStatus', require('./routes/salonStatus'))
+app.use('/api/barbars', require('./routes/barbars'))
 
 app.listen(port, () => {
   console.log(`App listening on port ${port}`)

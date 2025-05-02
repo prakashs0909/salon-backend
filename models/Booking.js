@@ -23,6 +23,10 @@ const BookingSchema = new Schema({
     type: [String],
     required: true,
   },
+  barbar:{
+    type: String,
+    required: true,
+  },
   status: { 
     type: String,
     default: "pending" 

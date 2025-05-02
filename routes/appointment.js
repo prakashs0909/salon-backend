@@ -54,7 +54,7 @@ router.post(
   ],
   async (req, res) => {
     try {
-      const { name, date, time, service } = req.body;
+      const { name, date, time, service, barbar} = req.body;
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -67,6 +67,7 @@ router.post(
         date,
         time,
         service,
+        barbar,
       });
 
       const savedBooking = await newBooking.save();

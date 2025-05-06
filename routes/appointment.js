@@ -29,9 +29,9 @@ router.get("/fetchuserappointments", fetchuser, async (req, res) => {
 
 // checking appointment is booked or not: POST "/api/appointments/checkbooking" login required
 router.post("/checkbooking", fetchuser, async (req, res) => {
-  const { date, time } = req.body;
+  const { date, time, barbar } = req.body;
   try {
-    const existingBookings = await Booking.find({ date, time });
+    const existingBookings = await Booking.find({ date, time, barbar });
 
     if (existingBookings.length > 0) {
       return res.status(200).json(existingBookings);

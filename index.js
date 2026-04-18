@@ -3,13 +3,25 @@ const express = require('express');
 var cors = require('cors');
 require('dotenv').config()
 
-connectToMongo();
+// connectToMongo();
 
 const app = express()
 const port = process.env.PORT || 3001
 
 app.use(cors());
 app.use(express.json());
+
+app.use(async (req, res, next) => {
+  try {
+    await connectToMongo();
+    next();
+  }
+  catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
 
 //Available routes
 app.get('/', (req, res) => {

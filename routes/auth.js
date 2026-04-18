@@ -61,7 +61,7 @@ router.post("/createadmin", async (req, res) => {
     res.json({ success: true, authToken });
   } catch (error) {
     console.error("Error in /createadmin route:", error);
-    res.status(500).send( "Some error occurred");
+    res.status(500).send( { error: error.message } );
   }
 });
 
